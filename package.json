@@ -9,7 +9,7 @@
     "start": "NUXT_APP_BASE_URL=/quicks PORT=3005 node .output/server/index.mjs"
   },
   "devDependencies": {
-    "nuxt": "3.0.0-rc.11",
+    "nuxt": "3.0.0",
     "sass": "^1.54.0"
   },
   "dependencies": {
