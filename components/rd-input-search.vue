@@ -1,0 +1,124 @@
+<template>
+  <div
+    class="rd-input-component"
+    :class="input.type ? `rd-input-component-${input.type}` : ''"
+  >
+    <div class="rd-input-icon-container">
+      <rd-svg :name="'magnify'" />
+    </div>
+    <input
+      type="text"
+      class="rd-input rd-body-text"
+      :placeholder="props.input.placeholder"
+      @input="updateModel"
+    />
+    <div class="rd-input-border"></div>
+  </div>
+</template>
+
+<script lang="ts" setup>
+  import { InputSearchOption } from "~~/interfaces/general";
+
+  const props = defineProps<{
+    input: InputSearchOption;
+  }>();
+
+  const inputModel = ref<string>("");
+
+  function updateModel({ target }: InputEvent): void {
+    if (target instanceof HTMLInputElement) {
+      inputModel.value = target.value;
+      props.input.model = target.value;
+    }
+  }
+</script>
+
+<style lang="scss" scoped>
+  .rd-input-component {
+    position: relative;
+    width: 100%;
+    height: 34px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    .rd-input-icon-container {
+      position: absolute;
+      right: 58px;
+      height: 100%;
+      padding: 10px 0;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    input.rd-input {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 0 58px;
+      border: none;
+      border-radius: 5px;
+      box-sizing: border-box;
+      color: var(--font-color);
+      background: rgba(0, 0, 0, 0);
+      display: flex;
+      transition: background-color 0.25s;
+      &::placeholder {
+        color: var(--font-color);
+        opacity: 0.5;
+        transition: opacity 0.25s;
+      }
+      &:hover {
+        outline: none;
+        background: rgba(0, 0, 0, 0);
+        &::placeholder {
+          opacity: 1;
+        }
+      }
+      &:focus {
+        outline: none;
+      }
+      &:focus + .rd-input-border {
+        border-color: var(--primary-color);
+        &::before {
+          opacity: 0.25;
+        }
+      }
+    }
+    .rd-input-border {
+      pointer-events: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 5px;
+      border: var(--border);
+      box-sizing: border-box;
+      transition: 0.25s border-color, 0.25s border-width;
+      &::before {
+        content: "";
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        width: calc(100% + 6px);
+        height: calc(100% + 6px);
+        border-radius: 6px;
+        border: 3px solid var(--primary-color);
+        box-sizing: border-box;
+        opacity: 0;
+        transition: 0.25s opacity;
+      }
+    }
+    &.rd-input-component-secondary {
+      .rd-input-icon-container {
+        background: transparent;
+      }
+      input.rd-input {
+        padding: 0 0.5rem 0 0;
+      }
+    }
+  }
+</style>

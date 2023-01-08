@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "start": "NUXT_APP_BASE_URL=/overhous PORT=3004 node .output/server/index.mjs"
+  },
+  "devDependencies": {
+    "nuxt": "3.0.0-rc.11",
+    "sass": "^1.54.0"
+  },
+  "dependencies": {
+    "gsap": "^3.10.4"
+  }
+}
