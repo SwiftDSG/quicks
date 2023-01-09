@@ -11,6 +11,15 @@ function genRandomStr(): string {
   return str;
 }
 
+function dueHandler(x: Date): number {
+  const currentDate: Date = new Date();
+
+  return (
+    Math.ceil(x.getTime() / 86400000) -
+    Math.ceil(currentDate.getTime() / 86400000)
+  );
+}
+
 export default function () {
   const { $fetch } = useNuxtApp()
 
@@ -50,7 +59,7 @@ export default function () {
     },
   ])
 
-  const loadTasks = async (): Promise<Task[]> => {
+  const loadTasks = async (filter?: string): Promise<Task[]> => {
     const tasksRaw: string = localStorage.getItem('tasks')
     if (!tasksRaw) {
       tasks.value = [
@@ -91,6 +100,10 @@ export default function () {
       localStorage.setItem('tasks', JSON.stringify(tasks.value))
     } else {
       tasks.value = JSON.parse(tasksRaw) as Task[]
+    }
+
+    if (filter === 'Urgent To Do') {
+      tasks.value = tasks.value.filter((a) => dueHandler(new Date(a.date || 0)) <= 10)
     }
     return tasks.value
   }

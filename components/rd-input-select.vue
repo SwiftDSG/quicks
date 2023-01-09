@@ -8,8 +8,8 @@
       props.input.label
     }}</label>
     <div class="rd-input-container">
-      <div v-if="props.input.icon" class="rd-input-icon-container">
-        <rd-svg :name="props.input.icon" :color="'primary'" />
+      <div class="rd-input-icon-container">
+        <rd-svg name="chevron-down" />
       </div>
       <input
         class="rd-input rd-body-text"
@@ -216,32 +216,19 @@
     .rd-input-container {
       position: relative;
       width: 100%;
-      height: 2rem;
-      background: var(--background-depth-three-color);
-      border-radius: 0.5rem;
+      height: 40px;
+      border-radius: 5px;
+      background: #fff;
       display: flex;
       align-items: center;
-      .rd-input-icon-container {
-        position: relative;
-        width: 2rem;
-        height: 2rem;
-        padding: 0 0.5rem;
-        border-top-left-radius: 0.5rem;
-        border-bottom-left-radius: 0.5rem;
-        box-sizing: border-box;
-        background: rgba(0, 0, 0, 0.05);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
       input.rd-input {
         position: relative;
         width: 100%;
         height: 100%;
-        padding: 0 0.5rem;
+        padding: 0 16px;
         border: none;
-        border-top-right-radius: 0.5rem;
-        border-bottom-right-radius: 0.5rem;
+        border-top-right-radius: 5px;
+        border-bottom-right-radius: 5px;
         box-sizing: border-box;
         color: var(--font-color);
         background: rgba(0, 0, 0, 0);
@@ -261,7 +248,6 @@
         }
         &:focus {
           outline: none;
-          background: var(--background-depth-two-color);
         }
         &:focus + .rd-input-border {
           border-color: var(--primary-color);
@@ -270,6 +256,18 @@
           }
         }
       }
+      .rd-input-icon-container {
+        cursor: pointer;
+        position: absolute;
+        right: 0;
+        width: 40px;
+        height: 40px;
+        padding: 0 11px;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
       .rd-input-border {
         pointer-events: none;
         position: absolute;
@@ -277,8 +275,8 @@
         left: 0;
         width: 100%;
         height: 100%;
-        border-radius: 0.5rem;
-        border: 1px solid rgba(0, 0, 0, 0.125);
+        border-radius: 5px;
+        border: var(--border);
         box-sizing: border-box;
         transition: 0.25s border-color, 0.25s border-width;
         &::before {
@@ -288,7 +286,7 @@
           left: -3px;
           width: calc(100% + 6px);
           height: calc(100% + 6px);
-          border-radius: 0.5rem;
+          border-radius: 6px;
           border: 3px solid var(--primary-color);
           box-sizing: border-box;
           opacity: 0;
@@ -303,11 +301,10 @@
         left: 0;
         width: 100%;
         max-height: 9rem;
-        background: var(--background-depth-one-color);
-        box-shadow: var(--box-shadow);
+        background: #fff;
+        border-radius: 5px;
+        border: var(--border);
         opacity: 0;
-        padding: 0.5rem;
-        border-radius: 0.5rem;
         box-sizing: border-box;
         overflow-x: hidden;
         overflow-y: auto;
@@ -320,8 +317,8 @@
           width: 100%;
           height: 2rem;
           background: rgba(0, 0, 0, 0);
-          padding: 0 0.75rem;
-          border-radius: 0.25rem;
+          padding: 0 14px;
+          border-radius: 5px;
           box-sizing: border-box;
           display: flex;
           flex-shrink: 0;
@@ -329,6 +326,15 @@
           transition: background-color 0.25s;
           &.rd-input-option-selected {
             background: rgba(0, 0, 0, 0.05);
+          }
+          &:not(:last-child)::before {
+            content: "";
+            position: absolute;
+            top: calc(100% - 0.5px);
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--border-color);
           }
         }
         &.rd-input-options-opened {

@@ -1,6 +1,13 @@
 <template>
   <div class="rd-panel" ref="rdPanel">
-    <div class="rd-panel-header"></div>
+    <div class="rd-panel-header">
+      <rd-input-select :input="filterInput" class="rd-panel-input" />
+      <rd-input-button
+        class="rd-panel-button"
+        label="New Task"
+        @clicked="newTask"
+      />
+    </div>
     <div class="rd-task-container">
       <div
         ref="rdTaskWrapper"
@@ -15,6 +22,7 @@
           @view-changed="shiftHandler"
           @state-changed="stateHandler"
           @updated="updateHandler"
+          @delete="deleteHandler"
         />
         <div
           class="rd-task-divider"
@@ -37,7 +45,8 @@
 <script lang="ts" setup>
   import gsap from "gsap";
   import { title } from "process";
-  import { Task } from "~~/interfaces/general";
+  import { ComputedRef } from "vue";
+  import { InputOption, Task } from "~~/interfaces/general";
 
   const props = defineProps<{
     state: "show" | "hide";
@@ -51,7 +60,18 @@
   const rdTaskWrapper = ref<HTMLDivElement[]>(null);
   const rdTaskOverlay = ref<HTMLDivElement>(null);
 
+  const filterInput = ref<InputOption>({
+    name: "filter",
+    model: "",
+    placeholder: "My Tasks",
+    options: ["Personal Errands", "Urgent To Do"],
+  });
+
   const tasks = ref<Task[]>(null);
+
+  const filterTimeout = ref<NodeJS.Timeout>(null);
+
+  const filter: ComputedRef<string> = computed(() => filterInput.value.value);
 
   const months: string[] = [
     "January",
@@ -158,6 +178,51 @@
         }
       }
     },
+    delete(rdTaskWrapper: HTMLElement[], index: number, cb?: () => void): void {
+      const tl: GSAPTimeline = gsap.timeline({
+        onComplete() {
+          if (cb) cb();
+        },
+      });
+
+      let offset: number = 0;
+
+      for (const rdTask of rdTaskWrapper) {
+        const i: number = parseInt(rdTask.dataset.index);
+        if (i === index) {
+          const rdTaskHeader: HTMLElement =
+            rdTask.querySelector(".rd-task-header");
+
+          offset += rdTaskHeader.getBoundingClientRect().height;
+
+          if (rdTask.children[0].classList.contains("rd-task-expanded")) {
+            const rdTaskBody: HTMLElement =
+              rdTask.querySelector(".rd-task-body");
+
+            offset += rdTaskBody.getBoundingClientRect().height + 22.5;
+          }
+
+          tl.to(
+            rdTask,
+            {
+              opacity: 0,
+              duration: 0.25,
+            },
+            "<0"
+          );
+        } else {
+          tl.to(
+            rdTask,
+            {
+              y: `-=${offset}`,
+              duration: 0.25,
+              ease: "power2.inOut",
+            },
+            "<0"
+          );
+        }
+      }
+    },
   };
 
   function positionHandler(index: number, inc: boolean): number {
@@ -178,7 +243,7 @@
           .getBoundingClientRect().height || 0;
     }
 
-    if (init.value || loading.value) pos *= 0.8875;
+    if (init.value && loading.value) pos *= 0.8875;
 
     return pos;
   }
@@ -239,8 +304,25 @@
       editTask(tasks.value[index]);
     }
   }
-  function stateHandler(checked: boolean) {
-    console.log(checked);
+  function stateHandler({ _id, checked }: { checked: boolean; _id: string }) {
+    const index: number = tasks.value.findIndex((a) => a._id === _id);
+    if (index > -1) {
+      tasks.value[index].completed = checked;
+      editTask(tasks.value[index]);
+    }
+  }
+  function deleteHandler(_id: string): void {
+    const index: number = tasks.value?.findIndex((a) => a._id === _id);
+    if (index > -1) {
+      animate.delete(rdTaskWrapper.value, index, async () => {
+        await deleteTask(_id);
+        tasks.value = await loadTasks(filter.value);
+      });
+    }
+  }
+
+  async function newTask(): Promise<void> {
+    await addTask();
   }
 
   function recalculate(index: number): void {
@@ -265,7 +347,7 @@
         rdElement.querySelector(".rd-task-header").getBoundingClientRect()
           .height + 1;
 
-      if (index === i) {
+      if (index === i && i !== rdTaskWrapper.value.length - 1) {
         tl.to(
           rdElement.querySelector(".rd-task-divider"),
           {
@@ -283,6 +365,25 @@
     () => props.state,
     (val) => {
       if (val === "hide") animate.exit(rdPanel.value);
+    }
+  );
+  watch(
+    () => filter.value,
+    (val) => {
+      clearTimeout(filterTimeout.value);
+      filterTimeout.value = setTimeout(() => {
+        loading.value = true;
+        setTimeout(() => {
+          animate.hide(rdTaskOverlay.value, async () => {
+            tasks.value = await loadTasks(val);
+            setTimeout(() => {
+              animate.show(rdTaskOverlay.value, () => {
+                loading.value = false;
+              });
+            }, 250);
+          });
+        }, 100);
+      }, 250);
     }
   );
 
@@ -316,11 +417,17 @@
     flex-direction: column;
     overflow: hidden;
     .rd-panel-header {
-      z-index: 2;
+      z-index: 20;
       position: relative;
       width: 100%;
       height: 34px;
       background: #fff;
+      display: flex;
+      justify-content: space-between;
+      .rd-panel-input {
+        position: relative;
+        width: 200px;
+      }
     }
     .rd-task-container {
       position: relative;
@@ -343,6 +450,7 @@
       }
     }
     .rd-task-overlay {
+      z-index: 10;
       pointer-events: none;
       position: absolute;
       bottom: 0;

@@ -4,11 +4,19 @@
     ref="rdTask"
     :class="`${state === 'expanded' ? 'rd-task-expanded' : ''} ${
       tagState === 'show' ? 'rd-task-editing-tags' : ''
+    } ${task.completed ? 'rd-task-completed' : ''} ${
+      actionState === 'show' ? 'rd-task-action-showed' : ''
     }`"
     :data-offset="offset"
   >
     <div ref="rdTaskHeader" class="rd-task-header">
-      <div class="rd-task-checkbox" @click="checkHandler"></div>
+      <div class="rd-task-checkbox" @click="checkHandler">
+        <rd-svg
+          v-if="task.completed"
+          class="rd-task-check"
+          name="check"
+        ></rd-svg>
+      </div>
       <div class="rd-task-detail-container">
         <span
           v-if="!changing"
@@ -44,8 +52,20 @@
                 name="chevron-down"
               />
             </div>
-            <div class="rd-task-action">
+            <div class="rd-task-action" @click="actionHandler">
               <rd-svg class="rd-task-action-icon" name="dots" />
+            </div>
+            <div
+              ref="rdAction"
+              class="rd-task-action-container"
+              :class="actionState === 'show' ? 'rd-task-action-opened' : ''"
+            >
+              <div
+                data-action="delete"
+                class="rd-task-action-option rd-task-action-option-delete"
+              >
+                <span class="rd-task-action-text rd-subtitle-text">Delete</span>
+              </div>
             </div>
           </div>
         </div>
@@ -133,24 +153,33 @@
 </template>
 
 <script lang="ts" setup>
+  import gsap from "gsap";
   import { ComputedRef } from "vue";
   import { InputDateOption, InputOption, Task } from "~~/interfaces/general";
 
   const props = defineProps<{
     task: Task;
   }>();
-  const emits = defineEmits(["view-changed", "state-changed", "updated"]);
+  const emits = defineEmits([
+    "view-changed",
+    "state-changed",
+    "updated",
+    "delete",
+  ]);
   const { tags } = useTask();
-
-  const state = ref<"collapsed" | "expanded">("collapsed");
-  const editing = ref<boolean>(false);
-  const changing = ref<boolean>(false);
-  const tagState = ref<"show" | "hide">("hide");
 
   const rdTask = ref<HTMLDivElement>(null);
   const rdTaskHeader = ref<HTMLDivElement>(null);
   const rdTaskBody = ref<HTMLDivElement>(null);
   const rdTaskDescription = ref<HTMLDivElement>(null);
+  const rdAction = ref<HTMLDivElement>(null);
+
+  const state = ref<"collapsed" | "expanded">("collapsed");
+  const editing = ref<boolean>(false);
+  const changing = ref<boolean>(false);
+  const tagState = ref<"show" | "hide">("hide");
+  const actionState = ref<"show" | "hide">("hide");
+  const actionAnim = ref<GSAPTimeline>(null);
 
   const dateInput = ref<InputDateOption>({
     model: "",
@@ -292,8 +321,31 @@
 
     return e;
   }
+  function actionHandler(e: MouseEvent): MouseEvent {
+    if (actionState.value === "hide") {
+      actionState.value = "show";
+      setTimeout(() => {
+        window.addEventListener("click", clickHandler);
+      }, 10);
+    } else actionState.value = "hide";
+
+    return e;
+  }
+  function clickHandler(e: MouseEvent): MouseEvent {
+    window.removeEventListener("click", clickHandler);
+    if (e.target instanceof HTMLElement) {
+      const action: "delete" = e.target.dataset.action as "delete";
+      if (action) emits("delete", props.task._id);
+      actionState.value = "hide";
+    }
+
+    return e;
+  }
   function checkHandler(e?: MouseEvent): MouseEvent {
-    emits("state-changed", !props.task.completed);
+    emits("state-changed", {
+      _id: props.task._id,
+      checked: !props.task.completed,
+    });
 
     return e;
   }
@@ -319,6 +371,40 @@
     return e;
   }
 
+  const animate = {
+    openAction(rdAction: HTMLElement): GSAPTimeline {
+      const tl: GSAPTimeline = gsap.timeline();
+
+      tl.to(rdAction, {
+        opacity: 1,
+        scale: 1,
+        ease: "power2.inOut",
+        duration: 0.25,
+      });
+
+      return tl;
+    },
+    closeAction(rdAction: HTMLElement): GSAPTimeline {
+      const tl: GSAPTimeline = gsap.timeline({
+        onComplete() {
+          gsap.to(rdAction, {
+            scale: 1.125,
+            duration: 0,
+          });
+        },
+      });
+
+      tl.to(rdAction, {
+        opacity: 0,
+        scale: 1.125,
+        ease: "power2.inOut",
+        duration: 0.25,
+      });
+
+      return tl;
+    },
+  };
+
   watch(
     () => props.task.description,
     (val) => {
@@ -338,6 +424,18 @@
         setTimeout(() => {
           rdTask.value.removeAttribute("style");
         }, 250);
+      }
+    }
+  );
+
+  watch(
+    () => actionState.value,
+    (val) => {
+      if (actionAnim.value?.isActive()) actionAnim.value.kill();
+      if (val === "show") {
+        actionAnim.value = animate.openAction(rdAction.value);
+      } else {
+        actionAnim.value = animate.closeAction(rdAction.value);
       }
     }
   );
@@ -452,6 +550,56 @@
               display: flex;
               justify-content: center;
               transition: 0.25s transform;
+            }
+            .rd-task-action-container {
+              pointer-events: none;
+              position: absolute;
+              top: 16px;
+              right: 3px;
+              width: 126px;
+              height: 43px;
+              background: #fff;
+              border-radius: 5px;
+              box-sizing: border-box;
+              border: var(--border);
+              border-color: #bdbdbd;
+              display: flex;
+              flex-direction: column;
+              overflow: hidden;
+              opacity: 0;
+              transform: scale(1.125);
+              &.rd-task-action-opened {
+                pointer-events: all;
+              }
+              .rd-task-action-option {
+                cursor: pointer;
+                position: relative;
+                width: 100%;
+                height: 100%;
+                padding: 0 16px;
+                box-sizing: border-box;
+                background: rgba(0, 0, 0, 0);
+                display: flex;
+                align-items: center;
+                transition: 0.25s background-color;
+                * {
+                  pointer-events: none;
+                }
+                span.rd-task-action-text {
+                  color: var(--primary-color);
+                }
+                &:hover {
+                  background: rgba(0, 0, 0, 0.05);
+                }
+                &:active {
+                  background: rgba(0, 0, 0, 0.15);
+                }
+                &.rd-task-action-option-delete {
+                  span.rd-task-action-text {
+                    color: var(--error-color);
+                  }
+                }
+              }
             }
           }
         }
@@ -569,6 +717,17 @@
         }
       }
     }
+    &.rd-task-completed {
+      .rd-task-detail-container {
+        span.rd-task-title {
+          text-decoration: line-through;
+          color: var(--font-secondary-color);
+        }
+      }
+    }
+    // &.rd-task-action-showed {
+    //   z-index: 2;
+    // }
     &.rd-task-expanded {
       z-index: 2;
       .rd-task-body {
