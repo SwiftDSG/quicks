@@ -13,6 +13,7 @@
         <rd-task
           :task="task"
           @view-changed="shiftHandler"
+          @state-changed="stateHandler"
           @updated="updateHandler"
         />
         <div
@@ -35,11 +36,13 @@
 
 <script lang="ts" setup>
   import gsap from "gsap";
+  import { title } from "process";
   import { Task } from "~~/interfaces/general";
 
   const props = defineProps<{
     state: "show" | "hide";
   }>();
+  const { loadTasks, addTask, editTask, deleteTask, changeTasks } = useTask();
 
   const loading = ref<boolean>(true);
   const init = ref<boolean>(true);
@@ -48,41 +51,7 @@
   const rdTaskWrapper = ref<HTMLDivElement[]>(null);
   const rdTaskOverlay = ref<HTMLDivElement>(null);
 
-  const tasks = ref<Task[]>([
-    {
-      _id: "0",
-      completed: false,
-      title:
-        "Set up documentation report for several Cases : Case 145443, Case 192829 and Case 182203",
-      date: new Date().toISOString(),
-      description:
-        "Homeworks needed to be checked are as follows : Client Profile Questionnaire, Passport Requirements and Images, Personal Documents.",
-    },
-    {
-      _id: "1",
-      completed: false,
-      title: "Set up documentation report",
-      date: new Date(2023, 0, 7).toISOString(),
-      description:
-        "Homeworks needed to be checked are as follows : Client Profile Questionnaire, Passport Requirements and Images, Personal Documents.",
-    },
-    {
-      _id: "2",
-      completed: false,
-      title: "Set up documentation report",
-      date: new Date(2023, 0, 10).toISOString(),
-      description:
-        "Homeworks needed to be checked are as follows : Client Profile Questionnaire, Passport Requirements and Images, Personal Documents.",
-    },
-    {
-      _id: "3",
-      completed: false,
-      title: "Set up documentation report",
-      date: new Date().toISOString(),
-      description:
-        "Homeworks needed to be checked are as follows : Client Profile Questionnaire, Passport Requirements and Images, Personal Documents.",
-    },
-  ]);
+  const tasks = ref<Task[]>(null);
 
   const months: string[] = [
     "January",
@@ -245,11 +214,13 @@
   function updateHandler({
     _id,
     description,
+    name,
     date,
     tags,
   }: {
     _id: string;
     description?: string;
+    name?: string;
     date?: Date;
     tags?: { name: string; color: string }[];
   }): void {
@@ -259,6 +230,52 @@
         tasks.value[index].description = description;
       if (date) tasks.value[index].date = date;
       if (tags) tasks.value[index].tags = tags;
+      if (typeof name === "string") {
+        tasks.value[index].title = name;
+        setTimeout(() => {
+          recalculate(index);
+        }, 100);
+      }
+      editTask(tasks.value[index]);
+    }
+  }
+  function stateHandler(checked: boolean) {
+    console.log(checked);
+  }
+
+  function recalculate(index: number): void {
+    const tl: GSAPTimeline = gsap.timeline();
+
+    let pos: number = 0;
+
+    for (var i: number = 0; i < rdTaskWrapper.value?.length || 0; i++) {
+      const rdElement: HTMLElement = rdTaskWrapper.value[i];
+
+      tl.to(
+        rdElement,
+        {
+          top: pos,
+          ease: "power2.inOut",
+          duration: 0.25,
+        },
+        "<0"
+      );
+
+      pos +=
+        rdElement.querySelector(".rd-task-header").getBoundingClientRect()
+          .height + 1;
+
+      if (index === i) {
+        tl.to(
+          rdElement.querySelector(".rd-task-divider"),
+          {
+            top: pos - 1,
+            ease: "power2.inOut",
+            duration: 0.25,
+          },
+          "<0"
+        );
+      }
     }
   }
 
@@ -269,8 +286,10 @@
     }
   );
 
-  onMounted(() => {
+  onMounted(async () => {
     animate.init(rdPanel.value);
+
+    tasks.value = await loadTasks();
 
     setTimeout(() => {
       animate.show(rdTaskOverlay.value, () => {

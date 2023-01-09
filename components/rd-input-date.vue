@@ -406,10 +406,11 @@
     }
   }
 
-  function updateModel({ target }: InputEvent): void {
-    if (target instanceof HTMLInputElement) {
-      inputModel.value = target.value;
+  function updateModel(e: Event): Event {
+    if (e.target instanceof HTMLInputElement) {
+      inputModel.value = e.target.value;
     }
+    return e;
   }
 
   function selectOption(date: number): void {

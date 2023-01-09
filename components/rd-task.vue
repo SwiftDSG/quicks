@@ -7,18 +7,27 @@
     }`"
     :data-offset="offset"
   >
-    <div class="rd-task-header">
-      <div class="rd-task-checkbox"></div>
+    <div ref="rdTaskHeader" class="rd-task-header">
+      <div class="rd-task-checkbox" @click="checkHandler"></div>
       <div class="rd-task-detail-container">
-        <span class="rd-task-title rd-headline-5">
-          {{ task.title }}
+        <span
+          v-if="!changing"
+          @click="changeHandler"
+          class="rd-task-title rd-headline-5"
+        >
+          {{ task.title || "No Title" }}
         </span>
+        <rd-input-text v-else :input="titleInput" class="rd-task-title-input" />
         <div class="rd-task-detail">
-          <span v-if="task.date" class="rd-task-due rd-caption-text">{{
-            dueHandler(new Date(task.date)) >= 0
-              ? `${dueHandler(new Date(task.date))} Days Left`
-              : `${dueHandler(new Date(task.date))} Days Late`
-          }}</span>
+          <span
+            v-if="task.date && dueHandler(new Date(task.date)) <= 10"
+            class="rd-task-due rd-caption-text"
+            >{{
+              dueHandler(new Date(task.date)) >= 0
+                ? `${dueHandler(new Date(task.date))} Days Left`
+                : `${dueHandler(new Date(task.date))} Days Late`
+            }}</span
+          >
           <span v-if="task.date" class="rd-task-due-date rd-caption-text">{{
             dateHandler(new Date(task.date))
           }}</span>
@@ -82,7 +91,7 @@
         style="cursor: pointer"
         @click="tagHandler"
       >
-        <div class="rd-task-info-icon-container">
+        <div class="rd-task-info-icon-container" style="overflow-x: auto">
           <rd-svg
             class="rd-task-info-icon"
             :color="task.tags?.length ? 'primary' : ''"
@@ -135,9 +144,11 @@
 
   const state = ref<"collapsed" | "expanded">("collapsed");
   const editing = ref<boolean>(false);
+  const changing = ref<boolean>(false);
   const tagState = ref<"show" | "hide">("hide");
 
   const rdTask = ref<HTMLDivElement>(null);
+  const rdTaskHeader = ref<HTMLDivElement>(null);
   const rdTaskBody = ref<HTMLDivElement>(null);
   const rdTaskDescription = ref<HTMLDivElement>(null);
 
@@ -150,6 +161,11 @@
     model: "",
     placeholder: "No Description",
   });
+  const titleInput = ref<InputOption>({
+    name: "title",
+    model: "",
+    placeholder: "Type Task Title",
+  });
 
   const selectedTags = ref<{ name: string; color: string }[]>([]);
 
@@ -161,6 +177,7 @@
   const description: ComputedRef<string> = computed(
     () => descriptionInput.value.model
   );
+  const title: ComputedRef<string> = computed(() => titleInput.value.model);
 
   function dateHandler(x: Date): string {
     const year: number = x.getFullYear();
@@ -251,6 +268,35 @@
   function tagClassHandler(name: string): boolean {
     return selectedTags.value?.findIndex((a) => a.name === name) !== -1;
   }
+  function changeHandler(e?: MouseEvent): MouseEvent {
+    if (!changing.value) {
+      changing.value = true;
+      titleInput.value.model = props.task.title;
+      setTimeout(() => {
+        const rdInput: HTMLInputElement =
+          rdTaskHeader.value.querySelector("input");
+        if (rdInput) rdInput.focus();
+        window.addEventListener("click", changeHandler);
+      }, 100);
+    } else {
+      if (e.target instanceof HTMLInputElement) {
+      } else {
+        emits("updated", {
+          _id: props.task._id,
+          name: title.value,
+        });
+        window.removeEventListener("click", changeHandler);
+        changing.value = false;
+      }
+    }
+
+    return e;
+  }
+  function checkHandler(e?: MouseEvent): MouseEvent {
+    emits("state-changed", !props.task.completed);
+
+    return e;
+  }
 
   function selectTag(e?: MouseEvent): MouseEvent {
     if (e.target instanceof HTMLElement) {
@@ -302,6 +348,16 @@
       emits("updated", {
         _id: props.task._id,
         tags: val,
+      });
+    },
+    { deep: true }
+  );
+  watch(
+    () => date.value,
+    (val) => {
+      emits("updated", {
+        _id: props.task._id,
+        date: new Date(val),
       });
     },
     { deep: true }
@@ -362,8 +418,15 @@
           position: relative;
           width: calc(100% - 200px);
         }
+        .rd-task-title-input {
+          position: absolute;
+          left: 0;
+          top: -11.5px;
+          width: calc(100% - 200px);
+        }
         .rd-task-detail {
-          position: relative;
+          position: absolute;
+          right: 0;
           width: 200px;
           height: 18px;
           display: flex;
@@ -423,7 +486,6 @@
           margin-left: 18px;
           display: flex;
           align-items: center;
-          overflow-x: auto;
           span.rd-task-description {
             position: relative;
             padding: 11.25px 0;
@@ -508,6 +570,7 @@
       }
     }
     &.rd-task-expanded {
+      z-index: 2;
       .rd-task-body {
         opacity: 1;
         pointer-events: all;
